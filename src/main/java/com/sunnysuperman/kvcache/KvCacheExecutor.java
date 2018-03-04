@@ -2,9 +2,9 @@ package com.sunnysuperman.kvcache;
 
 public interface KvCacheExecutor {
 
-    String find(String key, KvCachePolicy policy);
+    byte[] find(String key, KvCachePolicy policy);
 
-    void save(String key, String value, KvCachePolicy policy);
+    void save(String key, byte[] value, KvCachePolicy policy);
 
     void remove(String key);
 

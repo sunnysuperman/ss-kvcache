@@ -5,14 +5,14 @@ import java.util.Map;
 
 public interface KvCache<K, T> {
 
-    T findById(K id) throws KvCacheException;
+    T findByKey(K key) throws KvCacheException;
 
-    T findById(K id, boolean cacheOnly) throws KvCacheException;
+    T findByKey(K key, boolean cacheOnly) throws KvCacheException;
 
-    Map<K, T> findByIds(Collection<K> ids) throws KvCacheException;
+    Map<K, T> findByKeys(Collection<K> keys) throws KvCacheException;
 
-    void save(K id, T model) throws KvCacheException;
+    void save(K key, T model) throws KvCacheException;
 
-    void remove(K id) throws KvCacheException;
+    void remove(K key) throws KvCacheException;
 
 }

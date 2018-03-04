@@ -5,8 +5,8 @@ import java.util.Map;
 
 public interface RepositoryProvider<K, T> {
 
-    T findByIdFromRepository(K id) throws Exception;
+    T findByKey(K key) throws Exception;
 
-    Map<K, T> findByIdsFromRepository(Collection<K> ids) throws Exception;
+    Map<K, T> findByKeys(Collection<K> keys) throws Exception;
 
 }

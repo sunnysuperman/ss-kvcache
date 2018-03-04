@@ -1,6 +1,7 @@
 package com.sunnysuperman.kvcache;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -9,9 +10,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.sunnysuperman.commons.util.ObjectUtil;
+import com.sunnysuperman.kvcache.converter.ModelConverter;
 
 public class DefaultKvCache<K, T> implements KvCache<K, T> {
     protected static final Logger LOG = LoggerFactory.getLogger(DefaultKvCache.class);
+    protected static final boolean VERBOSE_ENABLED = LOG.isDebugEnabled();
     protected KvCacheExecutor executor;
     protected KvCachePolicy policy;
     protected RepositoryProvider<K, T> repository;
@@ -28,44 +31,53 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
         this.saveFilter = saveFilter;
     }
 
-    protected String makeKey(K id) {
+    protected String makeFullKey(K key) {
         String prefix = policy.getPrefix();
         if (prefix == null || prefix.length() == 0) {
-            return id.toString();
+            return key.toString();
         }
-        return prefix + id.toString();
+        return prefix + key.toString();
     }
 
-    private T findFromCache(K id) throws KvCacheException {
-        String key = makeKey(id);
-        String s = executor.find(key, policy);
-        if (s == null) {
+    private T findFromCache(K key) throws KvCacheException {
+        String fullKey = makeFullKey(key);
+        byte[] value = executor.find(fullKey, policy);
+        if (VERBOSE_ENABLED) {
+            LOG.debug("[KvCache] find <{}> <{}>", fullKey, value != null ? "cached" : "not found");
+        }
+        if (value == null) {
             return null;
         }
-        return converter.deserialize(s);
+        return converter.deserialize(value);
     }
 
     @Override
-    public void save(K id, T model) throws KvCacheException {
-        String key = makeKey(id);
-        String value = converter.serialize(model);
-        executor.save(key, value, policy);
+    public void save(K key, T model) throws KvCacheException {
+        String fullKey = makeFullKey(key);
+        byte[] value = converter.serialize(model);
+        if (value == null) {
+            throw new RuntimeException("[KvCache] could not serialize to null");
+        }
+        executor.save(fullKey, value, policy);
+        if (VERBOSE_ENABLED) {
+            LOG.debug("[KvCache] save <{}>", fullKey);
+        }
     }
 
     @Override
-    public T findById(K id) throws KvCacheException {
-        return findById(id, false);
+    public T findByKey(K key) throws KvCacheException {
+        return findByKey(key, false);
     }
 
     @Override
-    public T findById(K id, boolean cacheOnly) throws KvCacheException {
-        if (id == null) {
+    public T findByKey(K key, boolean cacheOnly) throws KvCacheException {
+        if (key == null) {
             return null;
         }
         T model = null;
         // 从缓存中查找
         try {
-            model = findFromCache(id);
+            model = findFromCache(key);
         } catch (Exception e) {
             LOG.error(null, e);
         }
@@ -77,7 +89,7 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
         }
         // 从db中查找
         try {
-            model = repository.findByIdFromRepository(id);
+            model = repository.findByKey(key);
         } catch (Exception e) {
             throw new KvCacheException(e);
         }
@@ -87,7 +99,7 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
         // 保存到缓存
         if (saveFilter == null || saveFilter.shouldSave(model)) {
             try {
-                save(id, model);
+                save(key, model);
             } catch (Exception e) {
                 LOG.error(null, e);
             }
@@ -96,21 +108,21 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
     }
 
     @Override
-    public Map<K, T> findByIds(Collection<K> ids) throws KvCacheException {
-        if (ids == null || ids.isEmpty()) {
-            return new HashMap<K, T>(0);
+    public Map<K, T> findByKeys(Collection<K> keys) throws KvCacheException {
+        if (keys == null || keys.isEmpty()) {
+            return Collections.emptyMap();
         }
-        Map<K, T> cacheMap = new HashMap<K, T>(ids.size());
+        Map<K, T> cacheMap = new HashMap<K, T>(keys.size());
         boolean allCached = true;
         // 从缓存中查找，如果其中一个对象在缓存中找不到，则退出缓存查找
         try {
-            for (K id : ids) {
-                T model = findFromCache(id);
+            for (K key : keys) {
+                T model = findFromCache(key);
                 if (model == null) {
                     allCached = false;
                     break;
                 }
-                cacheMap.put(id, model);
+                cacheMap.put(key, model);
             }
         } catch (Exception e) {
             LOG.error(null, e);
@@ -119,26 +131,27 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
         if (allCached) {
             return cacheMap;
         }
-
         // 到db中查找，然后再全部存入缓存
         Map<K, T> freshMap;
         try {
-            freshMap = repository.findByIdsFromRepository(ids);
+            freshMap = repository.findByKeys(keys);
         } catch (Exception e) {
             throw new KvCacheException(e);
         }
-        if (!freshMap.isEmpty()) {
-            for (Entry<K, T> entry : freshMap.entrySet()) {
-                K id = entry.getKey();
-                if (!cacheMap.containsKey(id)) {
-                    T model = entry.getValue();
-                    if (saveFilter == null || saveFilter.shouldSave(model)) {
-                        try {
-                            save(id, model);
-                        } catch (Exception e) {
-                            LOG.error(null, e);
-                        }
-                    }
+        if (freshMap.isEmpty()) {
+            return freshMap;
+        }
+        for (Entry<K, T> entry : freshMap.entrySet()) {
+            K key = entry.getKey();
+            if (cacheMap.containsKey(key)) {
+                continue;
+            }
+            T model = entry.getValue();
+            if (saveFilter == null || saveFilter.shouldSave(model)) {
+                try {
+                    save(key, model);
+                } catch (Exception e) {
+                    LOG.error(null, e);
                 }
             }
         }
@@ -146,8 +159,11 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
     }
 
     @Override
-    public void remove(K id) throws KvCacheException {
-        String key = makeKey(id);
-        executor.remove(key);
+    public void remove(K key) throws KvCacheException {
+        String fullKey = makeFullKey(key);
+        executor.remove(fullKey);
+        if (VERBOSE_ENABLED) {
+            LOG.debug("[KvCache] remove <{}>", fullKey);
+        }
     }
 }
