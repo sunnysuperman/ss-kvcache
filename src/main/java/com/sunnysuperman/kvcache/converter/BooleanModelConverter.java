@@ -3,6 +3,15 @@ package com.sunnysuperman.kvcache.converter;
 import com.sunnysuperman.kvcache.KvCacheException;
 
 public class BooleanModelConverter implements ModelConverter<Boolean> {
+    private static final BooleanModelConverter INSTANCE = new BooleanModelConverter();
+
+    public static final BooleanModelConverter getInstance() {
+        return INSTANCE;
+    }
+
+    private BooleanModelConverter() {
+
+    }
 
     @Override
     public Boolean deserialize(byte[] value) throws KvCacheException {

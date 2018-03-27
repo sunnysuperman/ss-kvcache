@@ -1,6 +1,5 @@
 package com.sunnysuperman.kvcache.converter;
 
-import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.sunnysuperman.commons.bean.Bean;
 import com.sunnysuperman.commons.bean.ParseBeanInterceptor;
 import com.sunnysuperman.commons.bean.ParseBeanOptions;
@@ -28,8 +27,9 @@ public class BeanModelConverter<T> implements ModelConverter<T> {
             String s = new String(value, StringUtil.UTF8_CHARSET);
             if (inteceptor != null) {
                 return Bean.fromJson(s, modelClass.newInstance(), new ParseBeanOptions().setInterceptor(inteceptor));
+            } else {
+                return Bean.fromJson(s, modelClass.newInstance());
             }
-            return Bean.fromJson(s, modelClass.newInstance());
         } catch (InstantiationException | IllegalAccessException e) {
             throw new KvCacheException(e);
         }
@@ -37,7 +37,7 @@ public class BeanModelConverter<T> implements ModelConverter<T> {
 
     @Override
     public byte[] serialize(T model) throws KvCacheException {
-        String s = JSONUtil.toJSONString(model, null, SerializerFeature.DisableCircularReferenceDetect);
+        String s = JSONUtil.toJSONString(model);
         return s.getBytes(StringUtil.UTF8_CHARSET);
     }
 }
