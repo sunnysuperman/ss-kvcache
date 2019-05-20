@@ -64,6 +64,37 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
     }
 
     @Override
+    public T refresh(K key) throws KvCacheException {
+        return findAndSave(key, false);
+    }
+
+    private T findAndSave(K key, boolean ignoreSaveError) throws KvCacheException {
+        // 从存储层中查找
+        T model;
+        try {
+            model = repository.findByKey(key);
+        } catch (Exception e) {
+            throw new KvCacheException(e);
+        }
+        if (model == null) {
+            return null;
+        }
+        // 保存到缓存
+        if (saveFilter == null || saveFilter.shouldSave(model)) {
+            if (ignoreSaveError) {
+                try {
+                    save(key, model);
+                } catch (Exception e) {
+                    LOG.error(null, e);
+                }
+            } else {
+                save(key, model);
+            }
+        }
+        return model;
+    }
+
+    @Override
     public T findByKey(K key) throws KvCacheException {
         return findByKey(key, false);
     }
@@ -86,24 +117,7 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
         if (cacheOnly) {
             return null;
         }
-        // 从db中查找
-        try {
-            model = repository.findByKey(key);
-        } catch (Exception e) {
-            throw new KvCacheException(e);
-        }
-        if (model == null) {
-            return null;
-        }
-        // 保存到缓存
-        if (saveFilter == null || saveFilter.shouldSave(model)) {
-            try {
-                save(key, model);
-            } catch (Exception e) {
-                LOG.error(null, e);
-            }
-        }
-        return model;
+        return findAndSave(key, true);
     }
 
     @Override
