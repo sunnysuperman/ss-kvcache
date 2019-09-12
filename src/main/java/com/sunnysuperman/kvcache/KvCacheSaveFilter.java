@@ -1,7 +1,7 @@
 package com.sunnysuperman.kvcache;
 
-public interface KvCacheSaveFilter<T> {
+public interface KvCacheSaveFilter<K, T> {
 
-    boolean shouldSave(T model);
+    boolean filter(K key, T value);
 
 }

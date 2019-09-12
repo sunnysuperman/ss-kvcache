@@ -1,14 +1,17 @@
 package com.sunnysuperman.kvcache;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sunnysuperman.commons.util.StringUtil;
 import com.sunnysuperman.kvcache.converter.ModelConverter;
 
 public class DefaultKvCache<K, T> implements KvCache<K, T> {
@@ -18,16 +21,36 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
     protected KvCachePolicy policy;
     protected RepositoryProvider<K, T> repository;
     protected ModelConverter<T> converter;
-    protected KvCacheSaveFilter<T> saveFilter;
+    protected KvCacheSaveFilter<K, T> saveFilter;
 
     public DefaultKvCache(KvCacheExecutor executor, KvCachePolicy policy, RepositoryProvider<K, T> repository,
-            ModelConverter<T> converter, KvCacheSaveFilter<T> saveFilter) {
+            ModelConverter<T> converter, KvCacheSaveFilter<K, T> saveFilter) {
         this.executor = executor;
         this.policy = policy;
         this.repository = repository;
         this.converter = converter;
         this.saveFilter = saveFilter;
         policy.validate();
+    }
+
+    public KvCacheExecutor getExecutor() {
+        return executor;
+    }
+
+    public KvCachePolicy getPolicy() {
+        return policy;
+    }
+
+    public RepositoryProvider<K, T> getRepository() {
+        return repository;
+    }
+
+    public ModelConverter<T> getConverter() {
+        return converter;
+    }
+
+    public KvCacheSaveFilter<K, T> getSaveFilter() {
+        return saveFilter;
     }
 
     protected String makeFullKey(K key) {
@@ -50,16 +73,65 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
         return converter.deserialize(value);
     }
 
+    private Map<K, T> findFromCache(Collection<K> keys) throws KvCacheException {
+        List<String> fullKeys = new ArrayList<>(keys.size());
+        for (K key : keys) {
+            fullKeys.add(makeFullKey(key));
+        }
+        Map<String, byte[]> bkv = executor.findMany(fullKeys, policy);
+        List<String> foundKeys = INFO_ENABLED ? new ArrayList<String>(bkv.size()) : null;
+        int i = -1;
+        Map<K, T> kv = new HashMap<>();
+        for (K key : keys) {
+            i++;
+            String fullKey = fullKeys.get(i);
+            byte[] bvalue = bkv.get(fullKey);
+            if (bvalue == null) {
+                continue;
+            }
+            T value = converter.deserialize(bvalue);
+            kv.put(key, value);
+            if (foundKeys != null) {
+                foundKeys.add(fullKey);
+            }
+        }
+        if (INFO_ENABLED) {
+            LOG.info("[KvCache] find <{}>, found: <{}>", StringUtil.join(fullKeys, " "),
+                    StringUtil.join(foundKeys, " "));
+        }
+        return kv;
+    }
+
     @Override
-    public void save(K key, T model) throws KvCacheException {
+    public void save(K key, T value) throws KvCacheException {
         String fullKey = makeFullKey(key);
-        byte[] value = converter.serialize(model);
-        if (value == null) {
+        byte[] data = converter.serialize(value);
+        if (data == null) {
             throw new RuntimeException("[KvCache] could not serialize to null");
         }
-        executor.save(fullKey, value, policy);
+        executor.save(fullKey, data, policy);
         if (INFO_ENABLED) {
             LOG.info("[KvCache] save <{}>", fullKey);
+        }
+    }
+
+    @Override
+    public void saveMany(Map<K, T> items) throws KvCacheException {
+        if (items.isEmpty()) {
+            return;
+        }
+        Map<String, byte[]> dataMap = new HashMap<>();
+        for (Entry<K, T> entry : items.entrySet()) {
+            String fullKey = makeFullKey(entry.getKey());
+            byte[] data = converter.serialize(entry.getValue());
+            if (data == null) {
+                throw new RuntimeException("[KvCache] could not serialize to null");
+            }
+            dataMap.put(fullKey, data);
+        }
+        executor.saveMany(dataMap, policy);
+        if (INFO_ENABLED) {
+            LOG.info("[KvCache] saveMany <{}>", StringUtil.join(dataMap.keySet()));
         }
     }
 
@@ -80,7 +152,7 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
             return null;
         }
         // 保存到缓存
-        if (saveFilter == null || saveFilter.shouldSave(model)) {
+        if (saveFilter == null || saveFilter.filter(key, model)) {
             if (ignoreSaveError) {
                 try {
                     save(key, model);
@@ -121,54 +193,64 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
     }
 
     @Override
-    public Map<K, T> findByKeys(Collection<K> keys) throws KvCacheException {
+    public Map<K, T> findByKeys(Collection<K> keys, boolean cacheOnly) throws KvCacheException {
         if (keys == null || keys.isEmpty()) {
             return Collections.emptyMap();
         }
-        Map<K, T> cacheMap = new HashMap<K, T>(keys.size());
-        boolean allCached = true;
-        // 从缓存中查找，如果其中一个对象在缓存中找不到，则退出缓存查找
+        Map<K, T> map = null;
         try {
-            for (K key : keys) {
-                T model = findFromCache(key);
-                if (model == null) {
-                    allCached = false;
-                    break;
-                }
-                cacheMap.put(key, model);
-            }
+            map = findFromCache(keys);
         } catch (Exception e) {
             LOG.error(null, e);
-            allCached = false;
+            map = Collections.emptyMap();
         }
-        if (allCached) {
-            return cacheMap;
+        if (cacheOnly || map.size() == keys.size()) {
+            return map;
         }
-        // 到db中查找，然后再全部存入缓存
+        List<K> queryKeys = new ArrayList<>(Math.max(keys.size() - map.size(), 1));
+        for (K key : keys) {
+            if (!map.containsKey(key)) {
+                queryKeys.add(key);
+            }
+        }
+        if (queryKeys.isEmpty()) {
+            LOG.warn("queryKeys is empty, should not happened!!!");
+            return map;
+        }
+        // 到repository中查找
         Map<K, T> freshMap;
         try {
-            freshMap = repository.findByKeys(keys);
+            freshMap = repository.findByKeys(queryKeys);
         } catch (Exception e) {
             throw new KvCacheException(e);
         }
         if (freshMap.isEmpty()) {
-            return freshMap;
+            return map;
         }
-        for (Entry<K, T> entry : freshMap.entrySet()) {
-            K key = entry.getKey();
-            if (cacheMap.containsKey(key)) {
-                continue;
-            }
-            T model = entry.getValue();
-            if (saveFilter == null || saveFilter.shouldSave(model)) {
-                try {
-                    save(key, model);
-                } catch (Exception e) {
-                    LOG.error(null, e);
+        // 合并缓存结果和新查数据结果
+        map.putAll(freshMap);
+        // 保存新加入缓存的数据
+        Map<K, T> saveItems;
+        if (saveFilter == null) {
+            saveItems = freshMap;
+        } else {
+            saveItems = new HashMap<>();
+            for (Entry<K, T> entry : freshMap.entrySet()) {
+                K key = entry.getKey();
+                T value = entry.getValue();
+                if (saveFilter.filter(key, value)) {
+                    saveItems.put(key, value);
                 }
             }
         }
-        return freshMap;
+        saveMany(saveItems);
+        // 返回
+        return map;
+    }
+
+    @Override
+    public Map<K, T> findByKeys(Collection<K> keys) throws KvCacheException {
+        return findByKeys(keys, false);
     }
 
     @Override

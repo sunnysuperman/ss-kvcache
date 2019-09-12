@@ -1,6 +1,9 @@
 /target/
 .DS_Store
 
+#project config
+/src/test/resources/com/sunnysuperman/sskvcache/test/test.properties
+
 #eclipse
 /.classpath
 /.project
