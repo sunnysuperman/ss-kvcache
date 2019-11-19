@@ -202,7 +202,7 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
             map = findFromCache(keys);
         } catch (Exception e) {
             LOG.error(null, e);
-            map = Collections.emptyMap();
+            map = new HashMap<>();
         }
         if (cacheOnly || map.size() == keys.size()) {
             return map;
