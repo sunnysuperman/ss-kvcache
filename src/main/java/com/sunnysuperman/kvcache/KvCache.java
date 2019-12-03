@@ -26,4 +26,7 @@ public interface KvCache<K, T> {
 
     void removeMany(Collection<K> keys) throws KvCacheException;
 
+    // 增加指定值(仅限指定缓存存在)
+    Long incrbyIfExists(K key, long num) throws KvCacheException;
+
 }

@@ -256,10 +256,10 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
     @Override
     public void remove(K key) throws KvCacheException {
         String fullKey = makeFullKey(key);
-        executor.remove(fullKey);
         if (INFO_ENABLED) {
             LOG.info("[KvCache] remove <{}>", fullKey);
         }
+        executor.remove(fullKey);
     }
 
     @Override
@@ -269,10 +269,20 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
             String fullKey = makeFullKey(key);
             fullKeys.add(fullKey);
         }
-        executor.removeMany(fullKeys);
         if (INFO_ENABLED) {
             LOG.info("[KvCache] removeMany <{}>", fullKeys);
         }
+        executor.removeMany(fullKeys);
+    }
+
+    @Override
+    public Long incrbyIfExists(K key, long num) throws KvCacheException {
+        String fullKey = makeFullKey(key);
+        Long result = executor.incrbyIfExists(fullKey, num);
+        if (INFO_ENABLED) {
+            LOG.info("[KvCache] incrbyIfExists <{}>: {}", fullKey, result);
+        }
+        return result;
     }
 
 }

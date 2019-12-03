@@ -4,14 +4,14 @@ import com.sunnysuperman.kvcache.KvCacheException;
 
 import redis.clients.util.SafeEncoder;
 
-public class IntegerStringModelConverter implements ModelConverter<Integer> {
-    private static final IntegerStringModelConverter INSTANCE = new IntegerStringModelConverter();
+public class IntModelConverter implements ModelConverter<Integer> {
+    private static final IntModelConverter INSTANCE = new IntModelConverter();
 
-    public static final IntegerStringModelConverter getInstance() {
+    public static final IntModelConverter getInstance() {
         return INSTANCE;
     }
 
-    private IntegerStringModelConverter() {
+    private IntModelConverter() {
 
     }
 

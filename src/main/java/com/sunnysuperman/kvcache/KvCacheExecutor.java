@@ -18,4 +18,6 @@ public interface KvCacheExecutor {
 
     void removeMany(Collection<String> keys);
 
+    Long incrbyIfExists(String key, long num);
+
 }

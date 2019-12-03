@@ -1,11 +1,14 @@
 package com.sunnysuperman.kvcache.redis;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.sunnysuperman.commons.util.FormatUtil;
 import com.sunnysuperman.kvcache.KvCacheExecutor;
 import com.sunnysuperman.kvcache.KvCachePolicy;
 
@@ -14,6 +17,7 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.util.SafeEncoder;
 
 public class RedisKvCacheExecutor implements KvCacheExecutor {
+    private static final String INCREASE_IF_EXISTS = "local v=redis.call('exists', KEYS[1]);if(v==0) then return nil;else return redis.call('incrby', KEYS[1], ARGV[1]);end";
     protected JedisPool pool;
 
     public RedisKvCacheExecutor(JedisPool pool) {
@@ -117,6 +121,21 @@ public class RedisKvCacheExecutor implements KvCacheExecutor {
         try {
             jedis = pool.getResource();
             jedis.del(keys.toArray(new String[keys.size()]));
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
+    }
+
+    @Override
+    public Long incrbyIfExists(String key, long num) {
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            Object result = jedis.eval(INCREASE_IF_EXISTS, Arrays.asList(key),
+                    Collections.singletonList(String.valueOf(num)));
+            return FormatUtil.parseLong(result);
         } finally {
             if (jedis != null) {
                 jedis.close();
