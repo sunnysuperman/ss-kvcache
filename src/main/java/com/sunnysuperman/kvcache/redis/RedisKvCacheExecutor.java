@@ -1,5 +1,6 @@
 package com.sunnysuperman.kvcache.redis;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +104,19 @@ public class RedisKvCacheExecutor implements KvCacheExecutor {
         try {
             jedis = pool.getResource();
             jedis.del(key);
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
+    }
+
+    @Override
+    public void removeMany(Collection<String> keys) {
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            jedis.del(keys.toArray(new String[keys.size()]));
         } finally {
             if (jedis != null) {
                 jedis.close();

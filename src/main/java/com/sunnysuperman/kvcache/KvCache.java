@@ -24,4 +24,6 @@ public interface KvCache<K, T> {
     // 从缓存中删除
     void remove(K key) throws KvCacheException;
 
+    void removeMany(Collection<K> keys) throws KvCacheException;
+
 }

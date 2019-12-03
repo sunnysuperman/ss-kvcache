@@ -1,5 +1,6 @@
 package com.sunnysuperman.kvcache;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -14,5 +15,7 @@ public interface KvCacheExecutor {
     void saveMany(Map<String, byte[]> items, KvCachePolicy policy);
 
     void remove(String key);
+
+    void removeMany(Collection<String> keys);
 
 }

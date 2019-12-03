@@ -261,4 +261,18 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
             LOG.info("[KvCache] remove <{}>", fullKey);
         }
     }
+
+    @Override
+    public void removeMany(Collection<K> keys) throws KvCacheException {
+        List<String> fullKeys = new ArrayList<>(keys.size());
+        for (K key : keys) {
+            String fullKey = makeFullKey(key);
+            fullKeys.add(fullKey);
+        }
+        executor.removeMany(fullKeys);
+        if (INFO_ENABLED) {
+            LOG.info("[KvCache] removeMany <{}>", fullKeys);
+        }
+    }
+
 }
