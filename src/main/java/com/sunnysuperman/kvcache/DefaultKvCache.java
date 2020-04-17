@@ -285,4 +285,14 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
         return result;
     }
 
+    @Override
+    public Double incrbyIfExists(K key, double num) throws KvCacheException {
+        String fullKey = makeFullKey(key);
+        Double result = executor.incrbyIfExists(fullKey, num);
+        if (INFO_ENABLED) {
+            LOG.info("[KvCache] incrbyIfExists <{}>: {}", fullKey, result);
+        }
+        return result;
+    }
+
 }

@@ -18,6 +18,8 @@ import redis.clients.util.SafeEncoder;
 
 public class RedisKvCacheExecutor implements KvCacheExecutor {
     private static final String INCREASE_IF_EXISTS = "local v=redis.call('exists', KEYS[1]);if(v==0) then return nil;else return redis.call('incrby', KEYS[1], ARGV[1]);end";
+    private static final String INCREASE_FLOAT_IF_EXISTS = "local v=redis.call('exists', KEYS[1]);if(v==0) then return nil;else return redis.call('incrbyfloat', KEYS[1], ARGV[1]);end";
+
     protected JedisPool pool;
 
     public RedisKvCacheExecutor(JedisPool pool) {
@@ -136,6 +138,21 @@ public class RedisKvCacheExecutor implements KvCacheExecutor {
             Object result = jedis.eval(INCREASE_IF_EXISTS, Arrays.asList(key),
                     Collections.singletonList(String.valueOf(num)));
             return FormatUtil.parseLong(result);
+        } finally {
+            if (jedis != null) {
+                jedis.close();
+            }
+        }
+    }
+
+    @Override
+    public Double incrbyIfExists(String key, double num) {
+        Jedis jedis = null;
+        try {
+            jedis = pool.getResource();
+            Object result = jedis.eval(INCREASE_FLOAT_IF_EXISTS, Arrays.asList(key),
+                    Collections.singletonList(String.valueOf(num)));
+            return FormatUtil.parseDouble(result);
         } finally {
             if (jedis != null) {
                 jedis.close();

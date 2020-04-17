@@ -29,4 +29,7 @@ public interface KvCache<K, T> {
     // 增加指定值(仅限指定缓存存在)
     Long incrbyIfExists(K key, long num) throws KvCacheException;
 
+    // 增加指定浮点值(仅限指定缓存存在)
+    Double incrbyIfExists(K key, double num) throws KvCacheException;
+
 }

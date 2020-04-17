@@ -20,4 +20,6 @@ public interface KvCacheExecutor {
 
     Long incrbyIfExists(String key, long num);
 
+    Double incrbyIfExists(String key, double num);
+
 }
