@@ -2,7 +2,7 @@ package com.sunnysuperman.kvcache.converter;
 
 import com.sunnysuperman.kvcache.KvCacheException;
 
-import redis.clients.util.SafeEncoder;
+import redis.clients.jedis.util.SafeEncoder;
 
 public class IntModelConverter implements ModelConverter<Integer> {
     private static final IntModelConverter INSTANCE = new IntModelConverter();

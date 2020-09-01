@@ -18,7 +18,7 @@ import junit.framework.TestCase;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Protocol;
-import redis.clients.util.SafeEncoder;
+import redis.clients.jedis.util.SafeEncoder;
 
 public class RedisKvCacheTest extends TestCase {
     private RedisKvCacheExecutor executor;
