@@ -243,7 +243,11 @@ public class DefaultKvCache<K, T> implements KvCache<K, T> {
                 }
             }
         }
-        saveMany(saveItems);
+        try {
+            saveMany(saveItems);
+        } catch (Exception ex) {
+            LOG.error(null, ex);
+        }
         // 返回
         return map;
     }
