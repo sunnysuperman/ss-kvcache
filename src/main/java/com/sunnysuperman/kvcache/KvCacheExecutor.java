@@ -6,20 +6,20 @@ import java.util.Map;
 
 public interface KvCacheExecutor {
 
-    byte[] find(String key, KvCachePolicy policy);
+	byte[] find(String key, KvCachePolicy policy);
 
-    Map<String, byte[]> findMany(List<String> keys, KvCachePolicy policy);
+	Map<String, byte[]> findMany(List<String> keys, KvCachePolicy policy);
 
-    void save(String key, byte[] value, KvCachePolicy policy);
+	void save(String key, byte[] value, KvCachePolicy policy);
 
-    void saveMany(Map<String, byte[]> items, KvCachePolicy policy);
+	void saveMany(Map<String, byte[]> items, KvCachePolicy policy);
 
-    void remove(String key);
+	void remove(String key);
 
-    void removeMany(Collection<String> keys);
+	void removeMany(Collection<String> keys);
 
-    Long incrbyIfExists(String key, long num);
+	Long incrbyIfExists(String key, long num);
 
-    Double incrbyIfExists(String key, double num);
+	Double incrbyIfExists(String key, double num);
 
 }
