@@ -87,7 +87,7 @@ public class RedisKvCacheExecutor implements KvCacheExecutor {
 	@Override
 	public void save(String key, byte[] value, KvCachePolicy policy) {
 		Jedis jedis = null;
-		int expireIn = policy.getExpireIn();
+		long expireIn = policy.getExpireIn();
 		try {
 			jedis = pool.getResource();
 			jedis.setex(SafeEncoder.encode(key), expireIn, value);
@@ -99,7 +99,7 @@ public class RedisKvCacheExecutor implements KvCacheExecutor {
 	@Override
 	public void saveMany(Map<String, byte[]> items, KvCachePolicy policy) {
 		Jedis jedis = null;
-		int expireIn = policy.getExpireIn();
+		long expireIn = policy.getExpireIn();
 		try {
 			jedis = pool.getResource();
 			for (Entry<String, byte[]> item : items.entrySet()) {

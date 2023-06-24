@@ -1,5 +1,9 @@
 package com.sunnysuperman.kvcache.test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -9,6 +13,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
 import com.sunnysuperman.kvcache.DefaultKvCache;
 import com.sunnysuperman.kvcache.KvCachePolicy;
 import com.sunnysuperman.kvcache.KvCacheSaveFilter;
@@ -16,42 +23,39 @@ import com.sunnysuperman.kvcache.RepositoryProvider;
 import com.sunnysuperman.kvcache.converter.StringConverter;
 import com.sunnysuperman.kvcache.redis.RedisKvCacheExecutor;
 
-import junit.framework.TestCase;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Protocol;
 import redis.clients.jedis.util.SafeEncoder;
 
-public class RedisKvCacheTest extends TestCase {
-	private Properties cfg = new Properties();
-	private RedisKvCacheExecutor executor;
+class RedisKvCacheTest {
+	private static Properties cfg = new Properties();
+	private static RedisKvCacheExecutor executor;
 
-	@Override
-	protected void setUp() throws Exception {
-		executor = new RedisKvCacheExecutor(initPool());
-
+	@BeforeAll
+	public static void setup() throws Exception {
 		InputStream in = RedisKvCacheTest.class.getResourceAsStream("test.properties");
 		cfg.load(in);
-	}
-
-	private void compareByteArray(byte[] b1, byte[] b2) {
-		assertTrue(b1.length == b2.length);
-		for (int i = 0; i < b1.length; i++) {
-			assertTrue(b1[i] == b2[i]);
-		}
-	}
-
-	private JedisPool initPool() {
+		
 		JedisPoolConfig config = new JedisPoolConfig();
 		config.setJmxEnabled(false);
 		config.setMinIdle(1);
 		config.setMaxIdle(1);
 		config.setMaxTotal(1);
-		return new JedisPool(config, cfg.getProperty("redis.host"), Integer.parseInt(cfg.getProperty("redis.port")),
+		JedisPool pool = new JedisPool(config, cfg.getProperty("redis.host"), Integer.parseInt(cfg.getProperty("redis.port")),
 				Protocol.DEFAULT_TIMEOUT, cfg.getProperty("redis.password"), 0);
+		executor = new RedisKvCacheExecutor(pool);
 	}
 
-	public void testFindMany1() {
+	private void compareByteArray(byte[] b1, byte[] b2) {
+		assertEquals(b1.length, b2.length);
+		for (int i = 0; i < b1.length; i++) {
+			assertEquals(b1[i], b2[i]);
+		}
+	}
+
+	@Test
+	void findMany1() {
 		List<String> keys = new ArrayList<>();
 		keys.add("1");
 		keys.add("2");
@@ -64,10 +68,11 @@ public class RedisKvCacheTest extends TestCase {
 		Map<String, byte[]> kv = executor.findMany(keys, policy);
 
 		compareByteArray(kv.get(keys.get(0)), SafeEncoder.encode("abc"));
-		assertTrue(kv.get(keys.get(1)) == null);
+		assertNull(kv.get(keys.get(1)));
 	}
 
-	public void testFindMany2() {
+	@Test
+	void findMany2() {
 		List<String> keys = new ArrayList<>();
 		keys.add("1");
 		keys.add("2");
@@ -84,7 +89,8 @@ public class RedisKvCacheTest extends TestCase {
 		compareByteArray(kv.get(keys.get(1)), SafeEncoder.encode("def"));
 	}
 
-	public void testFindByKeys() {
+	@Test
+	void findByKeys() {
 		KvCachePolicy policy = new KvCachePolicy();
 		policy.setExpireIn(3600);
 		policy.setPrefix("");
@@ -129,7 +135,8 @@ public class RedisKvCacheTest extends TestCase {
 		assertTrue(cache.findByKeys(keys2).size() == keys2.size());
 	}
 
-	public void testSaveFilter() {
+	@Test
+	void saveFilter() {
 		KvCachePolicy policy = new KvCachePolicy();
 		policy.setExpireIn(3600);
 		policy.setPrefix("");
