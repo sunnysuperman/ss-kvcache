@@ -36,14 +36,15 @@ class RedisKvCacheTest {
 	public static void setup() throws Exception {
 		InputStream in = RedisKvCacheTest.class.getResourceAsStream("test.properties");
 		cfg.load(in);
-		
+
 		JedisPoolConfig config = new JedisPoolConfig();
 		config.setJmxEnabled(false);
 		config.setMinIdle(1);
 		config.setMaxIdle(1);
 		config.setMaxTotal(1);
-		JedisPool pool = new JedisPool(config, cfg.getProperty("redis.host"), Integer.parseInt(cfg.getProperty("redis.port")),
-				Protocol.DEFAULT_TIMEOUT, cfg.getProperty("redis.password"), 0);
+		JedisPool pool = new JedisPool(config, cfg.getProperty("redis.host"),
+				Integer.parseInt(cfg.getProperty("redis.port")), Protocol.DEFAULT_TIMEOUT,
+				cfg.getProperty("redis.password"), 0);
 		executor = new RedisKvCacheExecutor(pool);
 	}
 
