@@ -11,6 +11,7 @@ import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sunnysuperman.commons.exception.UnexpectedException;
 import com.sunnysuperman.commons.util.StringUtil;
 import com.sunnysuperman.kvcache.converter.Converter;
 
@@ -79,7 +80,7 @@ public class DefaultKvCache<T, K> implements KvCache<T, K> {
 			fullKeys.add(makeFullKey(key));
 		}
 		Map<String, byte[]> bkv = executor.findMany(fullKeys, policy);
-		List<String> foundKeys = INFO_ENABLED ? new ArrayList<String>(bkv.size()) : null;
+		List<String> foundKeys = INFO_ENABLED ? new ArrayList<>(bkv.size()) : null;
 		int i = -1;
 		Map<K, T> kv = new HashMap<>();
 		for (K key : keys) {
@@ -107,7 +108,7 @@ public class DefaultKvCache<T, K> implements KvCache<T, K> {
 		String fullKey = makeFullKey(key);
 		byte[] data = converter.serialize(value);
 		if (data == null) {
-			throw new RuntimeException("[KvCache] could not serialize to null");
+			throw new UnexpectedException("[KvCache] could not serialize to null");
 		}
 		executor.save(fullKey, data, policy);
 		if (INFO_ENABLED) {
@@ -125,7 +126,7 @@ public class DefaultKvCache<T, K> implements KvCache<T, K> {
 			String fullKey = makeFullKey(entry.getKey());
 			byte[] data = converter.serialize(entry.getValue());
 			if (data == null) {
-				throw new RuntimeException("[KvCache] could not serialize to null");
+				throw new UnexpectedException("[KvCache] could not serialize to null");
 			}
 			dataMap.put(fullKey, data);
 		}
